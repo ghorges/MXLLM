@@ -1,0 +1,5 @@
+# 忽略整个Databases目录
+/Databases/
+
+# 忽略原始数据文件
+*.csv
