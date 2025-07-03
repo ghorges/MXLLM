@@ -1,0 +1,13 @@
+[project]
+name = "mxllm"
+version = "0.1.0"
+description = "mxllm"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "bs4>=0.0.2",
+    "cython>=3.1.2",
+    "lxml>=5.4.0",
+    "selenium>=4.33.0",
+    "setuptools>=80.9.0",
+]

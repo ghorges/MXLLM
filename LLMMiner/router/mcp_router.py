@@ -1,0 +1,1 @@
+# FastMCP router placeholder
