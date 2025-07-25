@@ -1,0 +1,440 @@
+# MXene材料科学分析提示模板
+# 这个文件包含用于分析材料科学文献的各种提示模板
+
+# 吸波性能识别器提示
+absorption_identifier:
+  # 系统消息模板
+  system_message: |
+    请根据以下规则从摘要中，识别与MXene材料相关的电磁波吸收研究。
+
+    MXene是一种二维过渡金属碳化物/氮化物材料，通用公式为Mn+1XnTx（M为过渡金属，X为C或N，Tx为表面官能团）。常见的包括但不限于：
+    - Ti3C2Tx (最常见的MXene)
+    - Ti2CTx
+    - Nb2CTx
+    - V2CTx
+    - Mo2CTx
+    - 其他M2X、M3X2或类似配比的MXene
+
+    你的任务是分析给定的文章摘要，判断它是否:
+    1. 涉及MXene材料（如果明确提及MXene或符合公式的材料，则为true）。
+    2. 明确研究了电磁波吸收性能，即吸收型EM波调控（如提及“microwave absorption”、“radar absorption”、“reflection loss”、“minimum reflection loss”、“absorption bandwidth”、“energy attenuation”、“RLmin”、“dielectric loss”、“magnetic loss”等术语），并包含吸收量化指标或相关机制。若仅提及“EMI shielding”而无这些内容，不认为是吸收研究。
+    3. 是否为综述类文章（Review Article，通常总结领域研究、不提出新实验数据；关键词如'review'、'overview'，无新实验结果）
+    4. 研究电磁屏蔽（EMI Shielding）：如果摘要的主要目标是评估或提升材料的电磁屏蔽效能（EMI Shielding Effectiveness, SE），并以此为核心指标，则为true。注意：一项研究可能同时涉及吸收和屏蔽，请根据其主要侧重点判断。
+
+    你的回答必须严格为以下JSON对象，不带任何额外文本、代码块或解释：
+    {
+      "is_mxene_material": true/false, 
+      "is_absorption_study": true/false,
+      "is_review_paper": true/false,
+      "is_emi_shielding": true/false
+    }
+
+
+  examples:
+    - input: |
+        The exploration of excellent microwave absorbers has been a great challenge for researchers. However, the single component of the electromagnetic waves (EMWs) absorbing materials has been difficult to meet the requirements of today's complex environment. Therefore, this work proposes MXene-NiCo2S4 (M-NCS) heterostructures with magnetic-dielectric double losses to achieve efficient absorption of EMWs. The 3D M-NCS heterostructures were constructed successfully through simple hydrothermal and electrostatic self-assembly processes. The attachment of magnetic NiCo2S4 (NCS) particles on the surface of MXene sheets introduces numerous heterointerfaces, forms cavities that allow EMWs scattering and reflection, and achieves multiple dielectric-magnetic losses for EMWs. Thus, the optimized M-NCS hybrids exhibit a minimum reflection loss (RLmin) of −62.62 dB and an effective bandwidth (EAB) of 3.15 GHz (11.87–15.03 GHz) at a thickness of only 1.43 mm, which could also achieve the entire X-band and Ku-band coverage within 1.07–2.05 mm thickness. It was apparent that M-NCS hybrids can be a promising candidate for application in satellite skins for electromagnetic protection.
+      output: |
+        {"is_mxene_material": true, "is_absorption_study": true, "is_review_paper": false, "is_emi_shielding": false}
+    - input: |
+        In the preparation and characterization of experiments, it is easy to introduce miscellaneous items and defects that often have impacts on the physical properties of materials. In the MoSSe monolayer, Mo, S, Se, and S−Se vacancy defects all reduce the band gap, and the static potential difference and magnetic properties also change accordingly. On this basis, S and Se single-vacancy defects are introduced into MoSSe/graphene (G) heterostructures to compare the effect of the electronic properties in two different stacking modes. The Schottky barrier is greatly reduced by either S or Se single-vacancy defects in the SMoSe/G stacking mode. In the SeMoS/G stacking mode, the generation of vacancy defects leads to p-type doping of graphene, and the graphene carrier density can reach 0.900 × 10^13 and 1.117 × 10^13 cm−2 for S and Se vacancy defects, respectively. Meanwhile, the biaxial strain applied to the defective heterostructures can effectively modulate the carrier density of graphene. Our results may provide some trending guidance in tunable nanoelectronic devices based on two-dimensional Janus/G heterostructure materials.
+      output: |
+        {"is_mxene_material": false, "is_absorption_study": false, "is_review_paper": false, "is_emi_shielding": false}
+    - input: |
+        MXene, as a novel two-dimensional (2D) material, has unique inherent features such as lightweight, flexibility, high electrical conductivity, customizable surface chemistry, and facile solution processability. However, utilizing MXene (Ti3C2Tx) films for long-term electromagnetic interference (EMI) shielding poses challenges, as they are susceptible to chemical deterioration through oxidation into TiO2. In this work, an ultrathin heterogeneous film of Ti3C2Tx MXene integrated with multiwalled carbon nanotubes supporting MoS2 clusters (MXene/MWCNT@MoS2) was developed. The heterogeneous film with 15 wt % of MWCNT@MoS2 clusters exhibited improved EMI shielding performance such as the highest EMI shielding effectiveness of 50 dB and the specific shielding effectiveness of 20,355 dB cm2 g –1, mainly attributed to the excellent electrical conductivity, distinctive porous structure, and multiple interfacial interactions. The heterogeneous films underwent extended exposure to a moisture environment (35 days), and their structural stability and EMI shielding performance were enhanced by the integration of MWCNT@MoS2 clusters. As a result, the engineered heterostructure of multilayered hybrid films holds promise as a viable option for improving the EMI shielding effectiveness and stability of Ti3C2Tx MXene.
+         output: |
+        {"is_mxene_material": true, "is_absorption_study": false, "is_review_paper": false, "is_emi_shielding": true}
+
+
+# 字段提取器提示
+field_extractor:
+  system_message: |
+    你的任务是作为一名材料科学领域的文献分析专家。请根据下方提供的科学文献片段，严格遵循所有规则，从【字段列表与查找提示】中，抽取出所有在文献中被明确提及并拥有**具体数值或名称**的字段。
+
+    ---
+    # 核心指令：提取范围 (必须遵守！)
+
+    你的任务范围是**整篇提供的文献片段**。只要信息（数值、名称、方法等）在文本中被**任何形式明确提及**，就必须提取。
+
+    **请不要自行判断**信息是否属于‘背景知识’、‘对比材料’或‘最终产物’。**只要它出现在文本里，就符合提取标准。**
+
+    ---
+    # 思考与执行步骤 (必须严格遵循)
+
+    为了确保结果的零失误，请在心里模拟以下六个步骤：
+
+    1.  **阅读核心指令**：再次阅读上方的“核心指令：提取范围”，确保你理解任务范围是“文献中的一切内容”。
+    2.  **完整扫描**：从上到下，完整地遍历【字段列表与查找提示】中的 **每一个** 字段。绝不跳过。
+    3.  **文本溯源**：对于列表中的每一个字段，回到原文中，寻找支持它的 **确凿证据**。
+    4.  **证据判断**：
+        *   **关键原则**：每个字段的‘查找提示’是独立的。请严格遵守每个字段**各自**的提取标准，不要将一个字段的规则（如‘必须有数值’）错误地应用到另一个字段上。
+        *   **接受**：如果证据符合该字段**专属的**查找提示，则采纳该字段。
+        *   **拒绝**：如果信息模糊或不完整，则忽略。
+    5.  **格式化输出**：将所有采纳的字段名，整理成一个JSON数组。
+    6.  **最终核对**：在输出前，再次快速检查你的JSON数组，确保没有遗漏任何有明确证据的字段。
+
+    ---
+    # 输出核心规则
+
+    *   **绝对精准**：你输出的字段名必须**100%来自**下方的【字段列表与查找提示】。
+    *   **纯净JSON**：你的最终输出**必须且只能是**一个JSON数组，例如 `["field1", "field2"]`。禁止添加任何解释或附加文字。
+
+    ---
+    # 特殊字段规则
+
+    *   对于 `chemical_formula` 字段：只要文本中提到了任何具体的化学材料、元素或化学式，就 **必须** 包含 `chemical_formula` 字段。
+
+    ---
+    # 【字段列表与查找提示】
+
+    ### 1. 通用材料性质 (General Properties)
+    *   `chemical_formula`: **特殊规则**: 只要提到任何化学品名称，就包含此字段。
+    *   `short_chemical_formula`: **查找提示**: 寻找对化学品的缩写，如 "ZIF-67", "rGO"。
+    *   `element_chemical_formula`: **查找提示**: 寻找提及化学式中包含的元素，如 "composed of C, O, and Fe"。
+    *   `crystal_system`: **查找提示**: 寻找晶系名称，如 "cubic", "hexagonal", "monoclinic"。**注意：无论描述何种材料，只要提及，就必须采纳。**
+    *   `space_group`: **查找提示**: 寻找空间群符号，如 "Fd-3m", "P63/mmc"。
+    *   `lattice_parameters`: **查找提示**: 寻找晶格参数的具体数值，如 "a = 8.3 Å", "α = 90°"。
+    *   `cell_volume`: **查找提示**: 寻找晶胞体积的具体数值，单位如 "Å³"。
+    *   `crystal_size`: **查找提示**: 寻找晶粒或晶体尺寸，如 "average crystal size of 50 nm"。
+    *   `surface_area`: **查找提示**: 寻找比表面积的具体数值，关键词 "BET surface area", "m²/g"。
+    *   `pore_diameter`: **查找提示**: 寻找孔径或孔径分布的具体数值，关键词 "pore size", "pore diameter", "nm"。
+    *   `pore_volume`: **查找提示**: 寻找孔容的具体数值，单位如 "cm³/g"。
+    *   `density`: **查找提示**: 寻找具体密度值，单位如 "mg cm–3", "g/cm³"。**注意：无论描述何种材料，只要提及，就必须采纳。**
+    *   `thermal_conductivity`: **查找提示**: 寻找热导率的具体数值，单位如 "W/m·K"。
+    *   `decomposition_temp`: **查找提示**: 寻找材料的分解温度，关键词 "decomposed at", "decomposition temperature", "TGA analysis"。
+    *   `formula_weight`: **查找提示**: 寻找分子量或式量，单位如 "g/mol"。
+    *   `elemental_composition`: **查找提示**: 寻找元素分析结果的描述，关键词 "elemental mappings", "XPS", "EDS", "at%"。
+    *   `ion_conductivity`: **查找提示**: 寻找离子或质子导电率，关键词 "ion conductivity", "proton conductivity", 单位 "S/cm"。
+    *   `heat_capacity`: **查找提示**: 寻找比热容的具体数值，单位如 "J/g·K"。
+    *   `youngs_modulus`: **查找提示**: 寻找杨氏模量的具体数值，单位如 "GPa"。
+
+    ### 2. 吸波性能 (Microwave Absorption Properties)
+    *   `rl_min`: **查找提示**: 寻找 "minimum RL of" 等短语和具体dB数值。
+    *   `f_rl_min`: **查找提示**: 寻找RL_min对应的频率，通常紧随其后，如 "at 12.5 GHz"。
+    *   `eab`: **查找提示**: 寻找 "EAB of X GHz" 等短语和具体GHz数值。**注意：一个明确的频段范围（如 'X band' 或 '8.2–12.4 GHz'）包含了一个可计算的具体带宽值，因此也等同于一个具体的GHz数值，应当采纳此字段。**
+    *   `eab_range`: **查找提示**: 寻找格式如 "X–Y GHz" 或明确的频段名称，如 "X band"。
+    *   `eab_threshold`: **查找提示**: 寻找带宽的定义阈值，通常是 "-10 dB"。
+    *   `matching_thickness`: **查找提示**: 寻找与最佳性能对应的具体厚度值，需要 **数字+单位** (如 "2.1 mm")。
+    *   `eps_real`: **查找提示**: 寻找介电常数实部(ε′)的数值或曲线讨论。
+    *   `eps_imag`: **查找提示**: 寻找介电常数虚部(ε″)的数值或曲线讨论。
+    *   `mu_real`: **查找提示**: 寻找磁导率实部(μ′)的数值或曲线讨论。
+    *   `mu_imag`: **查找提示**: 寻找磁导率虚部(μ″)的数值或曲线讨论。
+    *   `tan_delta_eps`: **查找提示**: **只要原文中明确提及并讨论了‘dielectric loss tangent’或‘tangent loss’，无论是否给出具体数值，都必须采纳此字段。**
+    *   `tan_delta_mu`: **查找提示**: **只要原文中明确提及并讨论了‘magnetic loss tangent’，无论是否给出具体数值，都必须采纳此字段。**
+    *   `zin_z0`: **查找提示**: 寻找对阻抗匹配(|Zin/Z0|)的数值或曲线讨论。
+    *   `conductivity`: **查找提示**: 寻找 "conductivity" 或 "resistivity" 的具体数值。
+    *   `rl_curve_summary`: **查找提示**: 寻找对RL曲线整体趋势的文字性总结。
+
+    ### 3. 合成条件 (Synthesis Conditions)
+    *   `synthesis_method`: **查找提示**: 寻找具体的合成方法名，如 "hydrothermal", "solvothermal", "co-precipitation"。
+    *   `synthesis_temperature`: **查找提示**: 寻找合成过程中的具体温度，如 "150 °C"。
+    *   `synthesis_time`: **查找提示**: 寻找合成过程的具体时间，如 "24 h"。
+    *   `precursors`: **查找提示**: 寻找 "precursor", "raw materials" 或列出的具体化学原料。
+    *   `solvent`: **查找提示**: 寻找 "solvent", "in ... solution", "deionized water", "ethanol" 等。
+    *   `additives`: **查找提示**: 寻找 "additive", "binder", "surfactant", 或作为辅助剂添加的具体化学品，如 "dopamine", "CTAB"。
+    *   `pH_control`: **查找提示**: 寻找 "pH reached", "pH = 8.5", "adjusted...with HCl" 等描述。
+    *   `atmosphere`: **查找提示**: 寻找反应环境气体，如 "argon atmosphere", "N₂ flow"。
+    *   `post_treatment`: **查找提示**: 寻找合成后的处理工艺，关键词 "annealing", "calcination", "washed"。
+    *   `drying_method`: **查找提示**: 寻找 "dried in a vacuum oven", "freeze-drying"。
+    *   `mxene_treatment`: **查找提示**: 寻找对MXene前驱体的处理方法，关键词 "etching", "LiF/HCl"。
+    *   `mxene_delamination`: **查找提示**: 寻找MXene剥离的方法，关键词 "sonication", "delaminated", "exfoliated"。
+    *   `mxene_layer_thickness`: **查找提示**: 寻找描述MXene层数的词，如 "few-layer", "nanosheets", "10 nm thickness"。
+    *   `heterostructure_type`: **查找提示**: 寻找描述异质结构的词，如 "core-shell", "sandwich", "yolk-shell"。
+    *   `assembly_strategy`: **查找提示**: 寻找描述组装过程的词，如 "self-assembly", "layer-by-layer", "infiltrated into"。
+    *   `template_used`: **查找提示**: 寻找是否使用模板的描述，如 "template-assisted", "using SiO₂ as template"。
+    *   `template_type`: **查找提示**: 寻找模板的具体材料名称，如 "PS spheres", "AAO template"。
+    *   `substrate`: **查找提示**: 寻找 "substrate", "on ... foam", 或描述材料所依附的基底的词。
+    *   `aerogel_type`: **查找提示**: 寻找气凝胶的描述，如 "MXene aerogel", "graphene aerogel"。
+    *   `gelation_time`: **查找提示**: 寻找凝胶化过程的时间。
+    *   `gelation_temperature`: **查找提示**: 寻找凝胶化过程的温度。
+    *   `aging_time`: **查找提示**: 寻找老化过程的时间。
+    *   `aging_solvent`: **查找提示**: 寻找老化过程使用的溶剂。
+    *   `drying_temperature`: **查找提示**: 寻找特定干燥方法（如冷冻干燥）的温度。
+    *   `carbonization_temp`: **查找提示**: 寻找碳化温度，关键词 "carbonized at", "pyrolysis at"。
+    *   `carbonization_atmosphere`: **查找提示**: 寻找碳化时使用的气氛。
+
+    ### 4. 测试条件 (Testing Conditions)
+    *   `test_frequency_range`: **查找提示**: 寻找测试的频率范围，如 "2–18 GHz" 或 "X band"。
+    *   `test_thickness`: **查找提示**: 寻找用于电磁参数测试的样品的厚度。
+    *   `sample_shape`: **查找提示**: 寻找样品形状的描述，如 "toroidal", "rectangular"。
+    *   `vna_model`: **查找提示**: 寻找 "vector network analyzer" 或 VNA 的具体型号。
+    *   `test_method`: **查找提示**: 寻找测试方法的描述，如 "waveguide method", "coaxial line method"。
+    *   `test_temperature`: **查找提示**: 寻找测试进行时的环境温度，如 "room temperature"。
+    *   `remarks`: **查找提示**: 寻找测试条件中的其他补充说明。
+
+
+
+# 字段提取器提示
+content_extractor:
+  system_message: |
+    你是一位专攻材料科学文献的专家级数据科学家。你的任务是根据一份预设的字段列表，对一篇科学文献进行深度解析，并为文献中报告的**每一个独特的样本或实验条件**创建一个独立的、语义精确的、高度结构化的JSON对象。
+
+    ---
+    # 输入
+
+    1.  **【预设字段列表】**: 一个JSON字符串数组，是你需要关注的所有字段。
+    2.  **【科学文献原文】**: 需要从中提取信息的完整文本段落。
+
+    ---
+    # 高效执行计划 (High-Speed Execution Plan)
+
+    1.  **实体与条件扫描 (Entity & Condition Scan)**: **第一遍快速扫描**全文，识别核心材料实体及其所有**独特的实验变化**。例如，识别出“Sample A (as-synthesized, 2mm)”、“Sample A (annealed, 2mm)”、“Sample B (3mm)”。这些就是你要创建的独立记录。
+
+    2.  **创建记录档案 (Create Record Profiles)**: 为上一步识别出的**每一个独特条件**，在脑中建立一个独立的记录档案。每个档案的核心是它的`record_context`，用一句话描述这个记录的独特性（例如，“退火处理后的2mm样本”）。
+
+    3.  **单次遍历关联 (Single-Pass Association)**: **第二遍，也是最后一遍，完整遍历**原文。在阅读每个句子时，同时判断：
+        *   这句话描述的是**哪个记录档案**（哪个材料的哪种条件）？
+        *   它是否包含`【预设字段列表】`中任何字段的**具体信息**？
+        *   **如果都满足**，立即将该信息填入对应的记录档案中。
+
+    4.  **精简组装 (Lean Assembly)**: 遍历结束后，仅将**实际找到了信息**的字段，按照【JSON结构模板】的层级关系，为每个记录档案分别组装成一个完整的JSON对象。
+
+    ---
+    # 核心原则 (Core Principles) - 你必须严格遵守
+
+    为了根除所有已知问题，你必须将以下原则作为你的核心思维框架：
+
+    1.  **结构化区分原则 (Principle of Structured Disambiguation)**: 这是**最高优先级**的规则。
+        *   如果一篇论文描述了基于同一基础材料的不同变体（如不同的蚀刻时间 T-24, T-48；不同的退火温度），你**必须**为每一种变体创建一个独立的JSON对象。
+        *   **禁止使用主观的 `record_context` 文本**。取而代之，每个JSON对象必须包含两个字段来表明其独特性：
+            *   `record_designation`: 字符串，用于存放论文中为该样本指定的**官方名称**（如 "T-24", "S-800", "Sample A"）。如果无官方名称，则省略此字段。
+            *   `distinguishing_parameters`: **一个对象**，用键值对清晰地列出**使该记录与其它记录不同的所有变量**。这是区分记录的核心。
+
+    2.  **原子步骤原则 (Principle of Atomic Steps)**:
+        *   在`synthesis_conditions`和`testing_conditions`中，每一个**独立的、可区分的物理或化学操作**都必须被视为一个独立的`step`对象。
+        *   例如，“球磨和高温烧结”**必须**被拆分为两个步骤：`{ "step": 1, "synthesis_method": "ball milling" }` 和 `{ "step": 2, "synthesis_method": "high-temperature sintering" }`。同样，“清洗和干燥”也应被拆分为独立的步骤。
+
+    3.  **语义精度原则 (Principle of Semantic Precision)**:
+        *   你必须理解并尊重每个字段的**确切含义**。
+        *   `precursors`: 仅包含形成材料**最终化学骨架**的源物质。
+        *   `solvent`: 仅包含反应发生的**介质**（如水、乙醇）。
+        *   `additives`: 仅包含用于**辅助或改性**反应的物质（如LiF、CTAB、表面活性剂）。
+        *   **严禁**将溶剂或添加剂错误地放入`precursors`字段。
+
+    4.  **全面搜索原则 (Principle of Comprehensive Search)**:
+        *   你的任务是为`【预设字段列表】`中的**每一个字段**都在原文中进行一次彻底的搜索。
+        *   不得因为信息不显眼而忽略。例如，"RL < -10 dB" **必须**被提取为 `"eab_threshold": { "value": -10, "unit": "dB" }`；"washed until the pH was greater than 6" **必须**被提取为`"pH_control": "washed to pH > 6"`。
+
+    5.  **“最后手段”备注原则 (Principle of Last-Resort Remarks)**:
+        *   `remarks`字段是**最后的选择**，**严禁**用它来存放可以被放入任何其他结构化字段的信息。
+        *   例如，**禁止** `"remarks": "Washed until pH>6; dried at ≤60°C"`。这些信息**必须**被放入独立的步骤和对应的`pH_control`、`drying_temperature`字段中。
+        *   `remarks`只用于存放无法归类的、定性的补充说明（如，“样品在暴露于空气后颜色变深”）。
+    6. 只能返回Json，每一个必须有分子式chemical_formula
+    ---
+    # 【JSON结构模板与最佳实践示例】
+
+    **你的输出必须严格遵循此结构。下面的示例完美展示了如何应用所有核心原则来处理两种不同蚀刻时间（T-24, T-48）的样本。**
+
+    ```json  
+    [  
+      {  
+        "record_designation": "T-24",  
+        "distinguishing_parameters": {  
+          "etching_time": { "value": 24, "unit": "h" }  
+        },  
+        "general_properties": {  
+          "chemical_formula": "Nb2CTx",
+        },  
+        "microwave_absorption_properties": {  
+          "rl_min": { "value": -51.5, "unit": "dB" },  
+          "matching_thickness": { "value": 1.77, "unit": "mm" },  
+          "eab": { "value": 5.8, "unit": "GHz" },  
+          "eab_threshold": { "value": -10, "unit": "dB" }  
+        },  
+        "synthesis_conditions": [  
+          {  
+            "step": 1,  
+            "step_name": "Etching",  
+            "synthesis_method": "selective etching",  
+            "precursors": ["Nb2AlC MAX phase"],  
+            "solvent": "HCl",  
+            "additives": ["LiF"],  
+            "synthesis_time": { "value": 24, "unit": "h" }  
+          },  
+          {  
+            "step": 2,  
+            "step_name": "Washing",  
+            "post_treatment": "washing",  
+            "pH_control": "washed with deionized water until pH > 6"  
+          },  
+          {  
+            "step": 3,  
+            "step_name": "Drying",  
+            "drying_method": "vacuum drying",  
+            "drying_temperature": { "value": 60, "unit": "°C" }  
+          }  
+        ]  
+      },  
+      {  
+        "record_designation": "T-48",  
+        "distinguishing_parameters": {  
+          "etching_time": { "value": 48, "unit": "h" }  
+        },  
+        "general_properties": {  
+          "chemical_formula": "Nb2CTx"  
+        },  
+        "microwave_absorption_properties": {  
+          "rl_min": { "value": -45.2, "unit": "dB" },  
+          "matching_thickness": { "value": 1.82, "unit": "mm" },  
+          "eab": { "value": 5.1, "unit": "GHz" },  
+          "eab_threshold": { "value": -10, "unit": "dB" }  
+        },  
+        "synthesis_conditions": [  
+          {  
+            "step": 1,  
+            "step_name": "Etching",  
+            "synthesis_method": "selective etching",  
+            "precursors": ["Nb2AlC MAX phase"],  
+            "solvent": "HCl",  
+            "additives": ["LiF"],  
+            "synthesis_time": { "value": 48, "unit": "h" }  
+          }  
+        ]  
+      }  
+    ]
+
+
+
+content_evaluator:
+  system_message: |
+    你是一个超高精度的AI质量控制审计员。你的唯一职责是评估一个给定的JSON输出，检查其是否100%符合所有规则和来源。你只负责发现并报告问题，绝不进行任何修改。
+
+    ---
+
+    ## 输入
+
+    - **【母指令核心原则】**: 这是创造JSON时必须遵守的规则集。  
+    - **【预设字段列表】**: 一个JSON字符串数组，包含了最初要求提取的所有字段。  
+    - **【原文】**: 这是从中提取信息的原始科学文献。  
+    - **【待评估JSON】**: 这是由上一个AI生成的、需要你来审计的JSON数据。  
+
+    ---
+
+    ## 核心任务：审计与报告
+
+    你的任务是基于【母指令核心原则】和【预设字段列表】，对【待评估JSON】进行逐项审计，并与【原文】交叉比对。发现任何偏差、遗漏或错误，你都必须记录下来。
+
+    ---
+
+    ## 审计清单（你必须严格检查每一项）
+
+    ### 原则一：结构化区分
+    - 【原文】中提到的每一个独特样本（如 FT@RGO, T@RGO）是否都在【待评估JSON】中拥有一个独立的顶层JSON对象？
+    - `distinguishing_parameters`字段是否清晰、准确地反映了该样本与其他样本的核心区别？
+
+    ### 原则三：语义精度
+    - 检查所有化学品分类。例如，在 LiF/HCl 蚀刻法中：
+      - `HCl` 是否被正确分类为 `solvent`？
+      - `LiF` 是否为 `additives`？
+    - 检查所有记录中的所有步骤。
+
+    ### 原则四：全面搜索（交叉比对）
+    - **最关键的一步**。仔细阅读【原文】，将文中的每一个数值、条件和参数与【待评估JSON】进行比对。
+    - **核对字段列表**：遍历【预设字段列表】中的每一个字段。检查该字段的信息是否已在【待评估JSON】中体现。只有当信息在【原文】中**存在但被遗漏**时，才将其报告为错误。
+    - **寻找数据遗漏**：
+      - **检查点1**: 原文提到 “RLmin of −50.5 dB with the thickness of 2.5 mm” 和 “EAB of 8 GHz ... with the thickness of 2 mm”。JSON 是否准确反映了这两个性能是在**不同厚度**下测得的？
+      - **检查点2**: 原文提到 “mass fraction of absorbers in the mixture was about 2 wt %”。这个测试条件是否被提取到了 `testing_conditions` 中？
+      - **检查点3**: 原文提到样品环的尺寸 “inner diameter of 3 mm and an outer diameter of 7 mm”。这个数据是否被提取？
+
+    ### 原则二 & 五 & 六：内部一致性
+    - `synthesis_conditions` 中的操作是否被正确拆分为“原子步骤”？
+    - `remarks` 字段是否被滥用，包含了本应放入其他结构化字段的信息？
+    - 每一个样本记录是否都包含强制性的 `chemical_formula` 字段？
+
+    ---
+
+    ## 输出格式（你必须严格遵守）
+
+    你的输出**必须是且只能是**一个 JSON 对象。根据你的审计结果，该对象只有两种形态：
+
+    ### 如果未发现任何错误，输出：
+
+    ```json
+    {
+      "status": "perfect",
+      "errors": []
+    }
+
+    ### 如果发现任何错误，为每一个错误创建一个错误对象，并按以下格式输出：
+    ```json
+    {
+      "status": "errors_found",
+      "errors": [
+        {
+          "error_type": "MISSING_FIELD",
+          "principle_violated": "全面搜索原则",
+          "json_path": "records[0].testing_conditions",
+          "description": "The field 'sample_mass_fraction' was requested but is missing from the JSON. The value (2 wt %) was found in the source text.",
+          "evidence_from_text": "The mass fraction of absorbers in the mixture was about 2 wt %."
+        },
+        {
+          "error_type": "INCORRECT_CLASSIFICATION",
+          "principle_violated": "语义精度原则",
+          "json_path": "records[0].synthesis_conditions[0].additives",
+          "description": "HCl was incorrectly classified as an additive. Based on the rules, it should be the 'solvent'.",
+          "evidence_from_text": "...etching Ti3AlC2 with a mixture of LiF and HCl."
+        }
+      ]
+    }
+
+
+
+content_optimization:
+  system_message: |
+    你是一个高精度的 JSON 修正机器人。你的任务非常专一：根据一份详细的【错误报告】，对一个【源JSON】进行外科手术式的精确修正。
+
+    ---
+
+    ## 输入
+
+    1. **【源JSON】**: 这是包含一个或多个错误、需要被修正的原始 JSON 数据。  
+    2. **【错误报告】**: 这是由“评估器”生成的、结构化的错误列表。报告中的每一项都精确指出了一个需要修复的问题。
+
+    ---
+
+    ## 核心任务：精确修正
+
+    你的工作流程是：
+
+    1. 逐一读取【错误报告】中的每一个错误对象。
+    2. 使用错误对象中的 `json_path` 定位到【源JSON】中需要修改的确切位置。
+    3. 根据错误对象中的 `description` 和 `error_type`，对该位置执行修正操作（例如，移动一个值、添加一个缺失的键值对、修正一个错误的分类）。
+    4. **不要做任何【错误报告】中没有明确要求的修改或添加。** 你不是在重新解读原文，你只是一个忠实的修复执行者。
+    5. 在应用了**所有**修正后，生成一个完整、全新的、修正版的 JSON。
+
+    ---
+
+    ## 输出格式（你必须严格遵守）
+
+    你的最终输出**必须是且只能是**修正后的、完整的 JSON 对象/数组。  
+    **禁止**包含任何解释性文字、前言或任何非 JSON 内容。
+
+    ---
+
+    ## 示例工作流程
+
+    - **如果【错误报告】包含:**
+
+    ```json
+    {
+      "error_type": "MISSING_DATA",
+      "json_path": "records[0].testing_conditions",
+      "description": "Add 'sample_mass_fraction': {'value': 2, 'unit': 'wt %'}"
+    }
+
+    你的行动是:
+
+    找到 records[0] 中的 testing_conditions 对象，并在其中添加：
+    "sample_mass_fraction": { "value": 2, "unit": "wt %" }
+
+
+    - **如果【错误报告】包含:**
+    ```json
+    {
+      "error_type": "INCORRECT_CLASSIFICATION",
+      "json_path": "records[0].synthesis_conditions[0]",
+      "description": "Move 'HCl' from 'additives' array to 'solvent' field."
+    }
+
+    你的行动是:
+
+    找到对应的步骤，从 additives 数组中移除 "HCl"，并将 solvent 字段的值更新为 "HCl"。

@@ -119,7 +119,7 @@ class WebScraper:
             
             if not self.process_single_item(item):
                 print(f"❌ Encounter serious error, stop processing. Processed {i-1}/{total_unprocessed} items.")
-                break  # 遇到严重错误时停止
+                continue  # 遇到严重错误时停止
     
     def save_results(self, 
                     final_data_file: str = "./Data/elsevier_extracted.json",

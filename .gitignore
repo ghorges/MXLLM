@@ -4,6 +4,7 @@
 
 # 忽略原始数据文件
 *.csv
+config.yaml
 
 # Python
 __pycache__/
@@ -36,6 +37,7 @@ ENV/
 .vscode/
 *.swp
 *.swo
+gemini-fullstack-langgraph-quickstart-main/
 
 # Config files with sensitive information
 LLMMiner/config.yaml

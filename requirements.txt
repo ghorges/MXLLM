@@ -1,0 +1,15 @@
+fastmcp>=0.1.0
+fastapi>=0.100.0
+uvicorn>=0.23.0
+pydantic>=2.0.0
+bs4>=0.0.2
+lxml>=5.4.0
+selenium>=4.33.0
+setuptools>=80.9.0
+cython>=3.1.2
+langgraph>=0.0.26
+langchain>=0.1.0
+langchain-community>=0.0.13
+langchain-core>=0.1.15
+typing-extensions>=4.8.0
+python-dotenv>=1.0.0
