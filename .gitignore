@@ -31,7 +31,15 @@ json/
 venv/
 env/
 ENV/
-
+delete_doi.py
+parser.log.1
+parser.log.2
+parser.log.3
+parser.log.4
+parser.log.5
+parser.log.6
+parser.log.7
+parser.log.8
 # IDE
 .idea/
 .vscode/
