@@ -232,7 +232,10 @@ content_extractor:
           "etching_time": { "value": 24, "unit": "h" }  
         },  
         "general_properties": {  
-          "chemical_formula": "Nb2CTx",
+          "chemical_formula": "Ti3C2Tx-NiCo2S4",
+          "short_chemical_formula": "M-NCS",
+          "element_chemical_formula": "Ti3C2Tx-NiCo2S4",
+          "crystal_size": "nano-NiCo2S4 particles"
         },  
         "microwave_absorption_properties": {  
           "rl_min": { "value": -51.5, "unit": "dB" },  
@@ -330,22 +333,43 @@ content_evaluator:
     ### 原则四：全面搜索（交叉比对）
     - **最关键的一步**。仔细阅读【原文】，将文中的每一个数值、条件和参数与【待评估JSON】进行比对。
     - **核对字段列表**：遍历【预设字段列表】中的每一个字段。检查该字段的信息是否已在【待评估JSON】中体现。只有当信息在【原文】中**存在但被遗漏**时，才将其报告为错误。
-    - **寻找数据遗漏**：
-      - **检查点1**: 原文提到 “RLmin of −50.5 dB with the thickness of 2.5 mm” 和 “EAB of 8 GHz ... with the thickness of 2 mm”。JSON 是否准确反映了这两个性能是在**不同厚度**下测得的？
-      - **检查点2**: 原文提到 “mass fraction of absorbers in the mixture was about 2 wt %”。这个测试条件是否被提取到了 `testing_conditions` 中？
-      - **检查点3**: 原文提到样品环的尺寸 “inner diameter of 3 mm and an outer diameter of 7 mm”。这个数据是否被提取？
 
     ### 原则二 & 五 & 六：内部一致性
     - `synthesis_conditions` 中的操作是否被正确拆分为“原子步骤”？
     - `remarks` 字段是否被滥用，包含了本应放入其他结构化字段的信息？
     - 每一个样本记录是否都包含强制性的 `chemical_formula` 字段？
 
-    ---
+    终止条件：关键模块锁定原则 (Critical Module Lockdown)
+    **核心思想**：为了达成最终收敛，我们将审计任务分为两个优先级。你的首要任务是确保【关键模块】的绝对正确性。只有这些模块中的错误，才能被视为阻止流程终止的“关键错误”。
+
+    **执行规则**：
+    在完成一轮对**整个JSON**的全面审计后，执行以下最终判断流程：
+
+    1.  **隔离关键错误**：检查你发现的所有错误。判断每个错误所在的`json_path`是否属于下方的【关键模块列表】。
+    2.  **做出最终决定**：
+    *   如果**没有任何一个错误**位于【关键模块列表】之内，这意味着所有核心数据都已准确无误。在这种情况下，你**必须忽略所有非关键模块的次要问题**（例如对`remarks`或`synthesis_conditions`中描述性文本的润色建议），并立即输出`{"status": "perfect", "errors": []}`作为最终报告。
+    *   反之，如果【关键模块列表】中**至少发现一个错误**（数据缺失、数值错误、单位错误等），则正常报告这些关键错误。
+
+
+
+    ## **【关键模块列表 (List of Critical Modules)】**
+
+    你必须确保以下JSON对象内的所有字段都**100%符合原文**，包括每一个数值、单位和条件。
+
+    **1. `general_properties`**
+      - **验证要求**: 此对象下的所有数据点（如化学式 `chemical_formula`、形貌 `morphology` 等）必须在原文中有直接证据支持，且内容完全一致。
+
+    **2. `microwave_absorption_properties`**
+      - **验证要求**: 此对象下的所有性能数据必须与原文完全匹配。你需要进行**原子级比对**：
+        - **RLmin (最小反射损耗)**: 数值 (`-50.5 dB`) 和对应的厚度 (`2.5 mm`) 是否正确配对？
+        - **EAB (有效吸收带宽)**: 数值 (`8 GHz`) 和对应的厚度 (`2.0 mm`) 是否正确配对？
+        - **频率范围 (Frequency Range)**: 是否与原文一致？
+        - **任何其他性能指标**: 是否都做到了数值、单位、条件的精确提取？
 
     ## 输出格式（你必须严格遵守）
 
     你的输出**必须是且只能是**一个 JSON 对象。根据你的审计结果，该对象只有两种形态：
-
+    所有JSON字符串值必须由一对双引号（""）完全包裹，引号外部不得有任何前导或尾随字符，包括空格。
     ### 如果未发现任何错误，输出：
 
     ```json
@@ -375,6 +399,13 @@ content_evaluator:
         }
       ]
     }
+
+
+    回答错误案例：
+    1.错误原因：冒号后有括号，导致json格式错误
+    "evidence_from_text": "RLmin reaches −45.15 dB at 1.41 mm" (implies frequency data exists but is not extracted)
+    正确格式：
+    "evidence_from_text": "RLmin reaches -45.15 dB at 1.41 mm"
 
 
 

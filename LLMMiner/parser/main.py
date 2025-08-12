@@ -26,6 +26,17 @@ from utils import load_config, get_temperature, get_max_retries, setup_logging
 # 初始化日志系统
 log = setup_logging()
 
+# 确保日志对象不为None，如果为None则创建一个回退日志记录器
+if log is None:
+    import logging
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S'
+    )
+    log = logging.getLogger("LLMMiner.parser.fallback")
+    log.warning("使用回退日志记录器，原始setup_logging()返回None")
+
 import time
 
 class ProcessState(TypedDict):
@@ -43,7 +54,8 @@ class MaterialParser:
         
         # 获取默认模型
         # self.default_model = self.config.get("models", {}).get("moonshot_version")
-        self.default_model = "kimi"
+        # self.default_model = "kimi"
+        self.default_model = "gemini"
         
         # 获取各阶段的温度参数
         self.abstract_temp = get_temperature("abstract_analysis")
@@ -377,6 +389,239 @@ class MaterialParser:
             "evaluation_result": final_state["evaluation_result"]
         }
 
+def get_processed_dois(file_path="extract.json"):
+    """
+    从JSON文件中读取已处理过的DOI列表
+    
+    Args:
+        file_path: JSON文件路径，默认为项目根目录下的extract.json
+        
+    Returns:
+        set: 已处理过的DOI集合
+    """
+    processed_dois = set()
+    try:
+        # 如果文件路径不是绝对路径，则转换为相对于项目根目录的绝对路径
+        if not os.path.isabs(file_path):
+            file_path = os.path.join(project_root, file_path)
+        
+        # 如果文件存在，读取DOI
+        if os.path.exists(file_path):
+            try:
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    existing_data = json.load(f)
+                
+                # 确保existing_data是列表
+                if not isinstance(existing_data, list):
+                    existing_data = [existing_data]
+                
+                # 提取所有DOI
+                for item in existing_data:
+                    if isinstance(item, dict) and "doi" in item:
+                        doi = clean_doi(item["doi"])
+                        if doi and doi != "Unknown":
+                            processed_dois.add(doi)
+                
+                log.info(f"从 {file_path} 读取到 {len(processed_dois)} 个已处理的DOI")
+            except json.JSONDecodeError:
+                log.warning(f"文件 {file_path} 格式不正确")
+    except Exception as e:
+        log.error(f"读取已处理DOI失败: {e}")
+    
+    return processed_dois
+
+def clean_doi(doi_string):
+    """
+    清理DOI字符串，删除可能存在的http://或https://前缀
+    
+    Args:
+        doi_string: 原始DOI字符串
+        
+    Returns:
+        str: 清理后的DOI字符串
+    """
+    if doi_string and isinstance(doi_string, str):
+        # 删除http://或https://前缀
+        if doi_string.startswith("http://"):
+            doi_string = doi_string[7:]
+        elif doi_string.startswith("https://"):
+            doi_string = doi_string[8:]
+    return doi_string
+
+def save_to_json(result, file_path="extract.json"):
+    """
+    将解析结果保存到JSON文件
+    
+    Args:
+        result: 解析结果，可以是单个字典或字典列表
+        file_path: JSON文件路径，默认为项目根目录下的extract.json
+    """
+    # 确保我们一定会执行保存操作
+    save_attempted = False
+    
+    # 如果文件路径不是绝对路径，则转换为相对于项目根目录的绝对路径
+    if not os.path.isabs(file_path):
+        file_path = os.path.join(project_root, file_path)
+    
+    # 计算clean_extract.json文件路径
+    clean_file_path = os.path.join(os.path.dirname(file_path), "clean_" + os.path.basename(file_path))
+    
+    # 如果文件已存在，先读取现有内容
+    existing_data = []
+    try:
+        if os.path.exists(file_path):
+            try:
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    existing_data = json.load(f)
+                # 确保existing_data是列表
+                if not isinstance(existing_data, list):
+                    existing_data = [existing_data]
+            except json.JSONDecodeError:
+                # 如果文件格式不正确，重新开始
+                log.warning(f"文件 {file_path} 格式不正确，将被覆盖")
+                existing_data = []
+            except Exception as e:
+                # 其他任何读取错误，记录但继续
+                log.warning(f"读取文件时出错: {e}，将创建新文件")
+                existing_data = []
+    except Exception as e:
+        log.warning(f"检查文件存在时出错: {e}，将创建新文件")
+        existing_data = []
+    
+    # 读取clean文件现有内容
+    existing_clean_data = []
+    try:
+        if os.path.exists(clean_file_path):
+            try:
+                with open(clean_file_path, 'r', encoding='utf-8') as f:
+                    existing_clean_data = json.load(f)
+                # 确保existing_clean_data是列表
+                if not isinstance(existing_clean_data, list):
+                    existing_clean_data = [existing_clean_data]
+            except json.JSONDecodeError:
+                # 如果文件格式不正确，重新开始
+                log.warning(f"文件 {clean_file_path} 格式不正确，将被覆盖")
+                existing_clean_data = []
+            except Exception as e:
+                # 其他任何读取错误，记录但继续
+                log.warning(f"读取文件时出错: {e}，将创建新文件")
+                existing_clean_data = []
+    except Exception as e:
+        log.warning(f"检查文件存在时出错: {e}，将创建新文件")
+        existing_clean_data = []
+    
+    # 将新结果添加到现有数据中
+    try:
+        if isinstance(result, list):
+            existing_data.extend(result)
+            
+            # 为每个结果创建clean版本并添加到clean数据中
+            for item in result:
+                if isinstance(item, dict):
+                    clean_item = create_clean_item(item)
+                    existing_clean_data.append(clean_item)
+        else:
+            existing_data.append(result)
+            
+            # 创建单个结果的clean版本
+            if isinstance(result, dict):
+                clean_item = create_clean_item(result)
+                existing_clean_data.append(clean_item)
+    except Exception as e:
+        log.error(f"添加新结果到现有数据时出错: {e}")
+        # 即使添加失败，也尝试保存原始结果
+        try:
+            if not isinstance(result, list):
+                result = [result]
+            existing_data = result
+            
+            # 创建clean版本
+            existing_clean_data = []
+            for item in result:
+                if isinstance(item, dict):
+                    clean_item = create_clean_item(item)
+                    existing_clean_data.append(clean_item)
+            
+            log.warning("无法合并数据，将只保存当前结果")
+        except:
+            log.error("无法处理结果数据，将跳过保存")
+            return False
+    
+    # 确保目录存在
+    try:
+        os.makedirs(os.path.dirname(os.path.abspath(file_path)), exist_ok=True)
+    except Exception as e:
+        log.warning(f"创建目录时出错: {e}")
+    
+    # 写入extract.json文件
+    try:
+        with open(file_path, 'w', encoding='utf-8') as f:
+            json.dump(existing_data, f, ensure_ascii=False, indent=2)
+        
+        log.info(f"成功将结果保存到 {file_path}")
+        save_attempted = True
+    except Exception as e:
+        log.error(f"保存结果到 {file_path} 失败: {e}")
+        
+        # 尝试使用备用方法保存
+        try:
+            # 使用临时文件名
+            backup_path = f"{file_path}.backup"
+            with open(backup_path, 'w', encoding='utf-8') as f:
+                json.dump(existing_data, f, ensure_ascii=False, indent=2)
+            log.info(f"已使用备用方法保存到 {backup_path}")
+            save_attempted = True
+        except Exception as e2:
+            log.error(f"备用保存方法也失败: {e2}")
+    
+    # 写入clean_extract.json文件
+    try:
+        with open(clean_file_path, 'w', encoding='utf-8') as f:
+            json.dump(existing_clean_data, f, ensure_ascii=False, indent=2)
+        
+        log.info(f"成功将清洁版结果保存到 {clean_file_path}")
+        save_attempted = True
+    except Exception as e:
+        log.error(f"保存清洁版结果到 {clean_file_path} 失败: {e}")
+        
+        # 尝试使用备用方法保存
+        try:
+            # 使用临时文件名
+            backup_path = f"{clean_file_path}.backup"
+            with open(backup_path, 'w', encoding='utf-8') as f:
+                json.dump(existing_clean_data, f, ensure_ascii=False, indent=2)
+            log.info(f"已使用备用方法保存清洁版结果到 {backup_path}")
+        except Exception as e2:
+            log.error(f"备用保存清洁版结果方法也失败: {e2}")
+    
+    return save_attempted
+
+def create_clean_item(item):
+    """
+    创建一个按指定顺序排列的清洁版本的数据项
+    
+    Args:
+        item: 原始数据项
+        
+    Returns:
+        dict: 按指定顺序排列的数据项（只包含doi、content和fields）
+    """
+    clean_item = {}
+    
+    # 1. 首先添加doi (如果存在)
+    if "doi" in item:
+        clean_item["doi"] = item["doi"]
+    
+    # 2. 然后添加content (如果存在)
+    if "content" in item:
+        clean_item["content"] = item["content"]
+    
+    # 3. 最后添加fields字段 (如果存在)
+    if "fields" in item:
+        clean_item["fields"] = item["fields"]
+    
+    return clean_item
+
 def format_duration(seconds):
     minutes = int(seconds // 60)
     sec = int(seconds % 60)
@@ -395,10 +640,14 @@ def main():
     # 生成可视化
     parser.visualize_pipeline()
     
+    # 获取已处理的DOI列表
+    processed_dois = get_processed_dois()
+    log.info(f"已有 {len(processed_dois)} 篇论文被处理过")
+    
     # 读取JSON文件
     try:
         # 构建JSON文件的路径
-        json_path = os.path.join(project_root, "Data", "acs_extracted.json")
+        json_path = os.path.join(project_root, "Data", "springer_extracted.json")
         log.info(f"Attempting to read JSON file from: {json_path}")
         # 检查文件是否存在
         if not os.path.exists(json_path):
@@ -431,8 +680,15 @@ def main():
             
             for i, paper in enumerate(data):
                 log.info(f"\nProcessing paper {i+1}/{total_papers}")
-                results = process_paper(parser, paper)
-                exit(0)
+                
+                # 检查DOI是否已经处理过
+                paper_doi = clean_doi(paper.get("doi", "Unknown"))
+                if paper_doi != "Unknown" and paper_doi in processed_dois:
+                    log.info(f"论文DOI: {paper_doi} 已经处理过，跳过")
+                    continue
+                
+                results = process_paper(parser, paper, processed_dois)
+                #exit(0)
                 if results:
                     # 统计各类论文数量
                     if results['abstract_analysis'].get('is_mxene_material', False):
@@ -467,7 +723,12 @@ def main():
             
         else:
             # 单篇论文
-            process_paper(parser, data)
+            # 检查DOI是否已经处理过
+            paper_doi = clean_doi(data.get("doi", "Unknown"))
+            if paper_doi != "Unknown" and paper_doi in processed_dois:
+                log.info(f"论文DOI: {paper_doi} 已经处理过，跳过")
+            else:
+                process_paper(parser, data, processed_dois)
             
     except Exception as e:
         log.error(f"Error processing JSON file: {e}")
@@ -492,18 +753,25 @@ def main():
     end_time = time.time()
     log.info(f"==== 解析流程结束，总耗时: {format_duration(end_time - start_time)} ====")
 
-def process_paper(parser, paper):
+def process_paper(parser, paper, processed_dois=None):
     """处理单篇论文数据"""
     try:
         t0 = time.time()
         # 提取摘要和正文
         abstract = paper.get("abstract", "")
         text_parts = paper.get("text", [])
+
+        if len(abstract) < 20:
+                       # 整理返回结果
+            result = {
+                "doi": full_state["doi"]
+            }
+            return result
         
-        # 将正文部分合并为单个字符串
-        text = "\n\n".join(text_parts) if text_parts else ""
+        # 将正文部分合并为单个字符串，跳过前5段引言部分
+        text = "\n\n".join(text_parts[5:-2]) if text_parts and len(text_parts) > 5 else ("\n\n".join(text_parts) if text_parts else "")
         text = text + "\n\n".join(paper.get("table", []))
-        
+        # text = text[:15000]
         log.info(f"Paper DOI: {paper.get('doi', 'Unknown')}")
         log.info(f"Abstract length: {len(abstract)} characters")
         log.info(f"Text length: {len(text)} characters")
@@ -511,10 +779,14 @@ def process_paper(parser, paper):
         # 首先只分析摘要
         # 直接调用abstract_analyzer
         t1 = time.time()
+        print("\n" + "=" * 50)
+        print("开始分析论文摘要 (使用流式输出)")
+        print("=" * 50)
         abstract_analysis = parser.abstract_analyzer.analyze(
             abstract,
             model_name=parser.default_model,
-            temperature=parser.abstract_temp
+            temperature=parser.abstract_temp,
+            use_streaming=False  # 启用流式输出
         )
         t2 = time.time()
         log.info(f"[process_paper] 摘要分析耗时: {format_duration(t2-t1)}")
@@ -543,30 +815,41 @@ def process_paper(parser, paper):
                 "fields": [],
                 "content": [],
                 "evaluation_result": {},
-                "optimization_attempts": 0
+                "optimization_attempts": 0,
+                "optimization_history": [],  # 新增字段，用于存储每次优化的历史记录
+                "doi": clean_doi(paper.get("doi", "Unknown"))  # 使用clean_doi函数处理DOI
             }
             
             # 从field_extraction开始处理
             # 提取字段
             t4 = time.time()
+            print("\n" + "=" * 50)
+            print("开始提取文章字段 (使用流式输出)")
+            print("=" * 50)
             fields = parser.field_extractor.extract(
                 text,
                 model_name=parser.default_model,
-                temperature=parser.field_temp
+                temperature=parser.field_temp,
+                use_streaming=False  # 启用流式输出
             )
             t5 = time.time()
             log.info(f"[process_paper] 字段提取耗时: {format_duration(t5-t4)}")
             full_state["fields"] = fields
             log.info(f"Extracted fields: {fields}")
-
+            
             # 提取内容
             if fields:
                 t6 = time.time()
+                print("\n" + "=" * 50)
+                print("开始提取文章详细内容 (使用流式输出)")
+                print("=" * 50)
                 content = parser.content_extractor.extract(
                     text, 
                     fields,
                     model_name=parser.default_model,
-                    temperature=parser.content_temp
+                    # model_name="kimi",
+                    temperature=parser.content_temp,
+                    use_streaming=False  # 启用流式输出
                 )
                 t7 = time.time()
                 log.info(f"[process_paper] 内容提取耗时: {format_duration(t7-t6)}")
@@ -577,47 +860,74 @@ def process_paper(parser, paper):
                 optimization_attempts = 0
                 evaluation = {"status": "needs_optimization"}  # 初始状态
                 
-                while evaluation["status"] != "perfect" and optimization_attempts < 10:
+                while evaluation["status"] != "perfect" and optimization_attempts < 5:
                     t_loop_start = time.time()
                     # 先评估当前内容
                     t_eval = time.time()
+                    print("\n" + "=" * 50)
+                    print(f"开始第 {optimization_attempts+1} 次内容评估 (使用流式输出)")
+                    print("=" * 50)
                     evaluation = parser.content_evaluator.evaluate(
                         text,
                         content,
                         fields,
                         model_name=parser.default_model,
-                        temperature=parser.eval_temp
+                        #model_name="kimi",
+                        temperature=parser.eval_temp,
+                        use_streaming=False  # 启用流式输出
                     )
                     t_eval_end = time.time()
                     log.info(f"[process_paper] 内容评估耗时: {format_duration(t_eval_end-t_eval)}")
                     full_state["evaluation_result"] = evaluation
                     log.info(f"Content evaluation result: {evaluation}")
                     
+                    # 记录本次评估结果
+                    iteration_record = {
+                        "iteration": optimization_attempts,
+                        "evaluation": evaluation.copy(),
+                        "content_before_optimization": [item.copy() for item in content] if content else []
+                    }
+                    
                     # 如果已经完美，跳出循环
                     if evaluation["status"] == "perfect":
                         log.info("Content is already perfect. No optimization needed.")
+                        # 将最后一次评估记录添加到历史
+                        full_state["optimization_history"].append(iteration_record)
                         break
                             
                     log.info(f"\nAttempting content optimization {optimization_attempts+1}...")
                     # 优化内容
                     t_opt = time.time()
+                    print("\n" + "=" * 50)
+                    print(f"开始第 {optimization_attempts+1} 次内容优化 (使用流式输出)")
+                    print("=" * 50)
                     optimized_content = parser.content_optimizer.optimize(
                         content,
                         evaluation,
                         model_name=parser.default_model,
-                        temperature=parser.opt_temp
+                        # model_name="kimi",
+                        temperature=parser.opt_temp,
+                        use_streaming=False  # 启用流式输出
                     )
                     t_opt_end = time.time()
                     log.info(f"[process_paper] 内容优化耗时: {format_duration(t_opt_end-t_opt)}")
                     full_state["content"] = optimized_content
+                    
+                    # 更新历史记录，添加优化后的内容
+                    iteration_record["content_after_optimization"] = [item.copy() for item in optimized_content] if optimized_content else []
+                    iteration_record["optimization_time"] = format_duration(t_opt_end-t_opt)
+                    iteration_record["evaluation_time"] = format_duration(t_eval_end-t_eval)
+                    full_state["optimization_history"].append(iteration_record)
+                    
                     content = optimized_content  # 更新content变量，用于下次优化
                     
                     optimization_attempts += 1
                     log.info(f"Completed optimization attempt {optimization_attempts}")
+                    log.info(f"Added optimization record to history. Total records: {len(full_state['optimization_history'])}")
                 
                 full_state["optimization_attempts"] = optimization_attempts
-            
-            # 打印结果
+                
+                # 打印结果
             log.info(f"\nExtracted fields: {full_state['fields']}")
             log.info(f"Content evaluation status: {full_state['evaluation_result'].get('status', 'Not evaluated')}")
             
@@ -629,17 +939,38 @@ def process_paper(parser, paper):
             
             t_end = time.time()
             log.info(f"[process_paper] 处理论文总耗时: {format_duration(t_end-t0)}")
-            return {
+            
+            # 整理返回结果
+            result = {
                 "abstract_analysis": abstract_analysis,
                 "fields": full_state["fields"],
                 "content": full_state["content"],
-                "evaluation_result": full_state["evaluation_result"]
+                "evaluation_result": full_state["evaluation_result"],
+                "optimization_history": full_state["optimization_history"],
+                "optimization_attempts": full_state["optimization_attempts"],
+                "doi": full_state["doi"]
             }
+            
+            # 将结果保存到extract.json文件
+            save_to_json(result)
+            
+            # time.sleep(60)
+            return result
         else:
             log.info("Does not meet processing criteria. Skipping this paper.")
             t_end = time.time()
             log.info(f"[process_paper] 处理论文总耗时: {format_duration(t_end-t0)}")
-            return {"abstract_analysis": abstract_analysis}
+            
+            # 整理返回结果，仅包含摘要分析和doi
+            result = {
+                "abstract_analysis": abstract_analysis,
+                "doi": clean_doi(paper.get("doi", "Unknown"))
+            }
+            
+            # 将结果保存到extract.json文件
+            save_to_json(result)
+            
+            return result
     except Exception as e:
         log.error(f"Error processing paper: {e}")
         return None

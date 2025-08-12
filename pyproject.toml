@@ -10,6 +10,7 @@ dependencies = [
     "deepseek>=1.0.0",
     "fastapi>=0.116.0",
     "fastmcp>=2.10.2",
+    "google-generativeai>=0.8.5",
     "graphviz>=0.21",
     "langchain-community>=0.3.27",
     "langchain-deepseek>=0.1.3",

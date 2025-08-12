@@ -3,8 +3,7 @@ import yaml
 import json
 
 # 导入工具函数
-from utils import call_llm_with_json_output
-from LLMMiner.parser.utils import log
+from utils import call_llm_with_json_output, call_llm_with_json_stream, log
 
 class ContentEvaluator:
     def __init__(self, prompt_file: str = "prompt.yaml"):
@@ -17,7 +16,8 @@ class ContentEvaluator:
                 extracted_content: List[Dict[str, Any]], 
                 fields: List[str],
                 model_name: str = "deepseek",
-                temperature: float = 0.0) -> Dict[str, Any]:
+                temperature: float = 0.0,
+                use_streaming: bool = True) -> Dict[str, Any]:
         """
         Evaluate the extracted content against the original text and field list
         
@@ -27,6 +27,7 @@ class ContentEvaluator:
             fields (List[str]): The list of fields that were supposed to be extracted
             model_name (str): The name of the model to use
             temperature (float): The temperature parameter for the model
+            use_streaming (bool): Whether to use streaming output
             
         Returns:
             Dict[str, Any]: Evaluation results containing:
@@ -54,13 +55,24 @@ class ContentEvaluator:
 
 请根据系统提示中的规则评估提取内容的质量，并返回评估结果。"""
             
-            # 调用LLM并获取JSON输出
-            result = call_llm_with_json_output(
-                system_prompt=self.system_message,
-                user_prompt=user_prompt,
-                model_name=model_name,
-                temperature=temperature
-            )
+            # 根据use_streaming参数决定使用哪个函数
+            if use_streaming:
+                print("\n===== 开始内容评估 (流式输出) =====")
+                result = call_llm_with_json_stream(
+                    system_prompt=self.system_message,
+                    user_prompt=user_prompt,
+                    model_name=model_name,
+                    temperature=temperature
+                )
+                print("\n===== 评估完成 =====")
+            else:
+                # 使用原来的非流式函数
+                result = call_llm_with_json_output(
+                    system_prompt=self.system_message,
+                    user_prompt=user_prompt,
+                    model_name=model_name,
+                    temperature=temperature
+                )
             
             # 验证结果包含所有必要字段
             if "status" not in result:

@@ -4,8 +4,7 @@ import json
 import copy
 
 # 导入工具函数
-from utils import call_llm_with_json_output
-from LLMMiner.parser.utils import log
+from utils import call_llm_with_json_output, call_llm_with_json_stream, log
 
 class ContentOptimizer:
     def __init__(self, prompt_file: str = "prompt.yaml"):
@@ -17,7 +16,8 @@ class ContentOptimizer:
                 content: List[Dict[str, Any]], 
                 evaluation_result: Dict[str, Any],
                 model_name: str = "deepseek",
-                temperature: float = 0.1) -> List[Dict[str, Any]]:
+                temperature: float = 0.1,
+                use_streaming: bool = True) -> List[Dict[str, Any]]:
         """
         Optimize the content based on evaluation results
         
@@ -26,6 +26,7 @@ class ContentOptimizer:
             evaluation_result (Dict[str, Any]): The evaluation results containing errors
             model_name (str): The name of the model to use
             temperature (float): The temperature parameter for the model
+            use_streaming (bool): Whether to use streaming output
             
         Returns:
             List[Dict[str, Any]]: The optimized content
@@ -51,13 +52,24 @@ class ContentOptimizer:
 
 请根据系统提示中的规则优化内容，并返回完整的优化后内容。"""
             
-            # 调用LLM并获取JSON输出
-            result = call_llm_with_json_output(
-                system_prompt=self.system_message,
-                user_prompt=user_prompt,
-                model_name=model_name,
-                temperature=temperature
-            )
+            # 根据use_streaming参数决定使用哪个函数
+            if use_streaming:
+                print("\n===== 开始内容优化 (流式输出) =====")
+                result = call_llm_with_json_stream(
+                    system_prompt=self.system_message,
+                    user_prompt=user_prompt,
+                    model_name=model_name,
+                    temperature=temperature
+                )
+                print("\n===== 优化完成 =====")
+            else:
+                # 使用原来的非流式函数
+                result = call_llm_with_json_output(
+                    system_prompt=self.system_message,
+                    user_prompt=user_prompt,
+                    model_name=model_name,
+                    temperature=temperature
+                )
             
             # 验证结果是否为列表
             if isinstance(result, list):

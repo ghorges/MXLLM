@@ -18,8 +18,7 @@ from langchain_deepseek import ChatDeepSeek
 from pydantic import BaseModel, Field
 
 # 导入工具函数
-from utils import call_llm_with_json_output
-from LLMMiner.parser.utils import log
+from utils import call_llm_with_json_output, call_llm_with_json_stream, log  # 导入流式函数
 
 
 # 定义结构化输出模型
@@ -36,7 +35,7 @@ class AbstractAnalyzer:
         # 正确获取absorption_identifier部分的system_message
         self.system_message = self.prompts.get('absorption_identifier', {}).get('system_message', '')
     
-    def analyze(self, text: str, model_name: str = "kimi", temperature: float = 0.0) -> Dict[str, bool]:
+    def analyze(self, text: str, model_name: str = "kimi", temperature: float = 0.0, use_streaming: bool = True) -> Dict[str, bool]:
         """
         Analyze the abstract text and return classification results
         
@@ -44,6 +43,7 @@ class AbstractAnalyzer:
             text (str): The abstract text to analyze
             model_name (str): The name of the model to use
             temperature (float): The temperature parameter for the model
+            use_streaming (bool): Whether to use streaming output
             
         Returns:
             Dict[str, bool]: Classification results containing:
@@ -57,13 +57,24 @@ class AbstractAnalyzer:
             # 准备用户提示
             user_prompt = f"请分析以下摘要:\n\n{text}"
             
-            # 调用LLM并获取JSON输出
-            result = call_llm_with_json_output(
-                system_prompt=self.system_message,
-                user_prompt=user_prompt,
-                model_name=model_name,
-                temperature=temperature
-            )
+            # 根据use_streaming参数决定使用哪个函数
+            if use_streaming:
+                print("\n===== 开始分析摘要 (流式输出) =====")
+                result = call_llm_with_json_stream(
+                    system_prompt=self.system_message,
+                    user_prompt=user_prompt,
+                    model_name=model_name,
+                    temperature=temperature
+                )
+                print("\n===== 摘要分析完成 =====")
+            else:
+                # 使用原来的非流式函数
+                result = call_llm_with_json_output(
+                    system_prompt=self.system_message,
+                    user_prompt=user_prompt,
+                    model_name=model_name,
+                    temperature=temperature
+                )
             
             # 验证结果包含所有必要字段
             required_fields = ["is_mxene_material", "is_absorption_study", "is_review_paper", "is_emi_shielding"]
