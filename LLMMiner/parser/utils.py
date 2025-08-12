@@ -30,55 +30,6 @@ logging.basicConfig(
 )
 log = logging.getLogger("LLMMiner.parser.default")
 
-# =====================================================================
-# 临时逻辑：API密钥轮换管理 (之后需要删除)
-# =====================================================================
-# 全局API密钥列表 - 请填入您的API密钥
-GEMINI_API_KEYS = [
-    # 请在这里添加您的Gemini API密钥
-    # "your-api-key-1",
-    # "your-api-key-2", 
-    # "your-api-key-3",
-    # "AIzaSyAS95-FLdHTyvXmEs3TQ6F8iNgB9XstZDA",
-    "AIzaSyA03aENIfFcE_cwbAhrr3kXWTxWZTL7nxc",
-    "AIzaSyDn190pDhQ8w0NcE_Zin0B5hhecUOPYC_U",
-    "AIzaSyBqdTdLqYTX9FO3l0f6bfVJBPHC5Fh1uFA",
-    "AIzaSyDfaNHMzPfMHwcEyWpfZy08BB29rHFQw4Q",
-]
-
-# 全局计数器和索引
-_api_call_counter = 0
-_current_api_key_index = 0
-_calls_per_key = 91  # 每个API密钥使用95次后切换
-
-def get_rotated_gemini_api_key():
-    """
-    获取轮换的Gemini API密钥
-    每调用95次后切换到下一个API密钥
-    
-    Returns:
-        str: 当前使用的API密钥
-    """
-    global _api_call_counter, _current_api_key_index
-    
-    if not GEMINI_API_KEYS:
-        # 如果没有设置全局密钥列表，返回None让原有逻辑处理
-        return None
-    
-    # 检查是否需要切换API密钥
-    if _api_call_counter >= _calls_per_key:
-        _current_api_key_index = (_current_api_key_index + 1) % len(GEMINI_API_KEYS)
-        _api_call_counter = 0
-        log.info(f"切换到API密钥索引: {_current_api_key_index}")
-    
-    _api_call_counter += 1
-    current_key = GEMINI_API_KEYS[_current_api_key_index]
-    
-    log.debug(f"使用API密钥索引 {_current_api_key_index}, 调用次数: {_api_call_counter}/{_calls_per_key}")
-    
-    return current_key
-# =====================================================================
-
 def setup_logging(log_level: str = "info", log_dir: str = None) -> logging.Logger:
     """
     设置日志系统
@@ -293,13 +244,6 @@ def get_llm(model_name: str = "kimi", temperature: float = 0.0) -> BaseChatModel
             temperature=temperature
         )
     elif model_name.lower() in ["geimi", "gemini"]:
-        
-        # =====================================================================
-        # 临时逻辑：优先使用轮换的API密钥 (之后需要删除)
-        # =====================================================================
-        api_key = get_rotated_gemini_api_key()
-        # 如果环境变量中没有设置API密钥，设置它
-        os.environ["GOOGLE_API_KEY"] = api_key
 
         # 如果没有设置全局密钥列表，则使用原有逻辑
         if not api_key:
@@ -309,7 +253,6 @@ def get_llm(model_name: str = "kimi", temperature: float = 0.0) -> BaseChatModel
                 api_key = config.get("api_keys", {}).get("gemini")
             if not api_key:
                 api_key = os.environ.get("GOOGLE_API_KEY")
-        # =====================================================================
         # 检查最终是否有API密钥
         if not api_key:
             raise ValueError("未找到Google API密钥，请在config.yaml中配置或设置环境变量GOOGLE_API_KEY")
