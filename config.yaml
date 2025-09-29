@@ -1,0 +1,25 @@
+# MXene LLM 配置文件
+
+# API 密钥
+api_keys:
+  deepseek: "" 
+  moonshot: "" 
+  gemini: ""
+
+# 模型配置
+models:
+  default: "deepseek-reasoner"  # 默认使用的模型
+  moonshot_version: "kimi-k2-0711-preview"  # Moonshot 模型版本
+  gemini_version: "gemini-2.5-pro"
+  temperatures:
+    abstract_analysis: 0.0
+    field_extraction: 0.0
+    content_extraction: 0.0
+    content_evaluation: 0.0
+    content_optimization: 0.1
+
+# 系统配置
+system:
+  cache_dir: "./cache"  # 缓存目录
+  log_level: "info"  # 日志级别: debug, info, warning, error
+  max_retries: 1  # API 调用最大重试次数

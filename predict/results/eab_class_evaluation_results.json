@@ -1,0 +1,38 @@
+{
+  "PLS": {
+    "algorithm": "PLS",
+    "training_time": 0.23131012916564941,
+    "prediction_time": 0.07149720191955566,
+    "accuracy": 0.9560975609756097,
+    "precision": 0.9561347270615562,
+    "recall": 0.9560975609756097,
+    "f1_score": 0.9560933806867169
+  },
+  "Random Forest": {
+    "algorithm": "Random Forest",
+    "training_time": 0.19538283348083496,
+    "prediction_time": 0.07864975929260254,
+    "accuracy": 0.9,
+    "precision": 0.9017054263565891,
+    "recall": 0.9,
+    "f1_score": 0.8999458497717955
+  },
+  "MLP": {
+    "algorithm": "MLP",
+    "training_time": 2.0813193321228027,
+    "prediction_time": 0.059513092041015625,
+    "accuracy": 0.9195121951219513,
+    "precision": 0.920271664023677,
+    "recall": 0.9195121951219513,
+    "f1_score": 0.9194474692624811
+  },
+  "DNN": {
+    "algorithm": "DNN",
+    "training_time": 18.22264313697815,
+    "prediction_time": 0.20533251762390137,
+    "accuracy": 0.9243902439024391,
+    "precision": 0.9244973230220107,
+    "recall": 0.9243902439024391,
+    "f1_score": 0.9243942922322418
+  }
+}

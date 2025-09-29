@@ -4,7 +4,6 @@
 
 # 忽略原始数据文件
 *.csv
-config.yaml
 
 # Python
 __pycache__/
@@ -55,3 +54,11 @@ LLMMiner/config.yaml
 
 browser_handler.py
 compile_to_pyc.py
+
+recommend/test*
+recommend/models/
+recommend/data/
+recommend/evaluation/
+recommend/pls_predicto*
+recommend/utils/
+
