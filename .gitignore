@@ -59,6 +59,8 @@ recommend/test*
 recommend/models/
 recommend/data/
 recommend/evaluation/
-recommend/pls_predicto*
+recommend/pls_predictor*
 recommend/utils/
+
+predict/results/
 
